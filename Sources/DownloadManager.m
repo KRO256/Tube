@@ -44,7 +44,8 @@
 - (UIViewController *)downloadsViewController { return [[DownloadsVC alloc] initWithStyle:UITableViewStylePlain]; }
 - (void)downloadVideo:(NSDictionary *)video audioOnly:(BOOL)audio {
     NSString *vid = video[@"id"];
-    NSString *title = [[video[@"title"] ?: vid] stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+    NSString *rawTitle = video[@"title"] ? video[@"title"] : vid;
+    NSString *title = [rawTitle stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
     [[YTDLPManager shared] streamURLForVideoID:vid audioOnly:audio completion:^(NSString *u, NSString *e) {
         if (!u) {
             UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:e delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
