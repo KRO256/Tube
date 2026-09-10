@@ -1,5 +1,5 @@
 ARCHS = armv7 arm64
-TARGET = iphone:clang:latest:9.0
+TARGET = iphone:clang:9.3:9.0
 APPLICATION_NAME = Tube
 Tube_FILES = Sources/main.m Sources/AppDelegate.m Sources/YTDLPManager.m Sources/SearchViewController.m Sources/PlayerViewController.m Sources/DownloadManager.m Sources/SettingsViewController.m
 Tube_FRAMEWORKS = UIKit Foundation AVFoundation AVKit MediaPlayer

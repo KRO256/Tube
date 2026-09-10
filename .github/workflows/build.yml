@@ -13,14 +13,14 @@ jobs:
         run: sudo apt-get update -q && sudo apt-get install -y -q perl git curl build-essential fakeroot xz-utils ca-certificates > /dev/null
       - name: theos
         run: |
-          git clone --recursive https://github.com/theos/theos.git ~/theos
+          export THEOS=~/theos
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
           git clone --depth 1 https://github.com/theos/sdks.git ~/sdks-tmp
-          mkdir -p ~/theos/sdks
           cp -a ~/sdks-tmp/iPhoneOS9.3.sdk ~/theos/sdks/
+          ls ~/theos/toolchain/linux/iphone/bin/clang ~/theos/sdks/iPhoneOS9.3.sdk
       - name: package
         run: |
           export THEOS=~/theos
-          export TARGET="iphone:clang:9.3:9.0"
           make package FINALPACKAGE=1
           ls -la *.deb packages/*.deb 2>/dev/null || true
       - uses: actions/upload-artifact@v4
