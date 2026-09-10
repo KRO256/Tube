@@ -1,0 +1,10 @@
+Package: com.local.tube
+Name: Tube
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Lightweight YouTube client for iOS 9 using latest yt-dlp
+Maintainer: Tube
+Author: Tube
+Depends: firmware (>= 9.0)
+Section: Multimedia
+Priority: optional
