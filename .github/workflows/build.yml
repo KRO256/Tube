@@ -16,8 +16,8 @@ jobs:
           export THEOS=~/theos
           bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
           git clone --depth 1 https://github.com/theos/sdks.git ~/sdks-tmp
-          cp -a ~/sdks-tmp/iPhoneOS9.3.sdk ~/theos/sdks/
-          ls ~/theos/toolchain/linux/iphone/bin/clang ~/theos/sdks/iPhoneOS9.3.sdk
+          cp -a ~/sdks-tmp/iPhoneOS12.4.sdk ~/theos/sdks/
+          ls ~/theos/toolchain/linux/iphone/bin/clang ~/theos/sdks/iPhoneOS12.4.sdk
       - name: package
         run: |
           export THEOS=~/theos
