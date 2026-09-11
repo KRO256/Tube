@@ -45,7 +45,9 @@
 - (void)downloadVideo:(NSDictionary *)video audioOnly:(BOOL)audio {
     NSString *vid = video[@"id"];
     NSString *rawTitle = video[@"title"] ? video[@"title"] : vid;
-    NSString *title = [rawTitle stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+    NSString *safe = [rawTitle stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+    if (safe.length > 80) safe = [safe substringToIndex:80];
+    NSString *title = [NSString stringWithFormat:@"%@-%@", safe, vid];
     [[YTDLPManager shared] streamURLForVideoID:vid audioOnly:audio completion:^(NSString *u, NSString *e) {
         if (!u) {
             UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Error" message:e delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
@@ -57,16 +59,27 @@
         [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
         NSString *dest = [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", title, ext]];
         NSURLSessionDownloadTask *task = [[NSURLSession sharedSession] downloadTaskWithURL:url completionHandler:^(NSURL *tmp, NSURLResponse *r, NSError *err) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (err) {
-                    UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"DL failed" message:err.localizedDescription delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-                    [a show]; return;
+            NSFileManager *fm = [NSFileManager defaultManager];
+            NSString *msg = nil;
+            if (err) msg = err.localizedDescription;
+            else if ([r isKindOfClass:[NSHTTPURLResponse class]] && ((NSHTTPURLResponse *)r).statusCode != 200)
+                msg = [NSString stringWithFormat:@"HTTP %ld", (long)((NSHTTPURLResponse *)r).statusCode];
+            else if (!tmp || ![fm fileExistsAtPath:tmp.path]) msg = @"temp file missing";
+            else {
+                [fm createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+                [fm removeItemAtPath:dest error:nil];
+                NSError *mv = nil;
+                if (![fm moveItemAtPath:tmp.path toPath:dest error:&mv]) {
+                    if ([fm copyItemAtPath:tmp.path toPath:dest error:&mv]) {
+                        [fm removeItemAtPath:tmp.path error:nil];
+                        mv = nil;
+                    }
                 }
-                [[NSFileManager defaultManager] removeItemAtPath:dest error:nil];
-                NSError *mv;
-                [[NSFileManager defaultManager] moveItemAtPath:tmp.path toPath:dest error:&mv];
-                NSString *msg = mv ? mv.localizedDescription : [@"Saved: " stringByAppendingString:dest];
-                UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Download" message:msg delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                msg = mv ? mv.localizedDescription : nil;
+            }
+            NSString *done = msg ? msg : [@"Saved: " stringByAppendingString:dest];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Download" message:done delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
                 [a show];
             });
         }];
