@@ -22,7 +22,7 @@ def icon(s):
             px.append(W if (x - cx) ** 2 + (y - cy) ** 2 <= r * r and tri(x + 0.5, y + 0.5) else R)
     return png(s, s, px)
 import os
-d = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Resources")
 for n, s in [("Icon-Small.png", 29), ("Icon-Small@2x.png", 58), ("Icon.png", 57), ("Icon@2x.png", 114), ("Icon-60@2x.png", 120)]:
     open(os.path.join(d, n), "wb").write(icon(s))
     print(n, s)

@@ -1,7 +1,8 @@
 import plistlib, struct, subprocess, sys, tarfile, glob, os
 deb = sys.argv[1]
-print("file:", subprocess.run(["file", deb], capture_output=True, text=True).stdout.strip())
-assert "gzip" in subprocess.run(["file", deb], capture_output=True, text=True).stdout, "deb must be gzip compressed"
+fout = subprocess.run(["file", deb], capture_output=True, text=True).stdout
+print("file:", fout.strip())
+assert "gzip" in fout or "compression gz" in fout, "deb must be gzip compressed"
 listing = subprocess.run(["dpkg-deb", "-c", deb], capture_output=True, text=True).stdout
 print(listing)
 paths = [l.split()[-1] for l in listing.strip().split("\n")]
