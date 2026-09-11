@@ -40,6 +40,8 @@
 }
 - (void)playURL:(NSURL *)url {
     self.player = [AVPlayer playerWithURL:url];
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+    [[AVAudioSession sharedInstance] setActive:YES error:nil];
     if (self.audioOnly || self.localPath) {
         self.toggle = [UIButton buttonWithType:UIButtonTypeSystem];
         [self.toggle setTitle:@"Pause" forState:UIControlStateNormal];
