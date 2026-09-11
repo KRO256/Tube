@@ -138,7 +138,7 @@ NSString *TubeDownloadProgress = @"TubeDownloadProgress";
 - (void)cancelDownload:(NSString *)vid {
     NSMutableDictionary *d = self.active[vid];
     if (!d) return;
-    [[d[@"task"] cancel];
+    [d[@"task"] cancel];
     [self.active removeObjectForKey:vid];
     [self changed];
 }

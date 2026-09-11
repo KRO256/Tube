@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
+#import <UIKit/UIKit.h>
 extern NSString *TubePlaybackChanged;
 @interface PlaybackManager : NSObject
 + (instancetype)shared;
@@ -10,4 +11,5 @@ extern NSString *TubePlaybackChanged;
 - (void)playLocalFile:(NSString *)path;
 - (void)toggle;
 - (BOOL)isPlaying;
+- (void)handleRemoteEvent:(UIEvent *)e;
 @end
