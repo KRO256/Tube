@@ -2,6 +2,8 @@
 #import "YTDLPManager.h"
 #import "PlayerViewController.h"
 #import "DownloadManager.h"
+#import "PlaybackManager.h"
+#import "PlaylistManager.h"
 @interface SearchViewController ()
 @property (nonatomic, strong) UISearchBar *bar;
 @property (nonatomic, strong) UITableView *table;
@@ -72,6 +74,28 @@
     [ac addAction:[UIAlertAction actionWithTitle:@"Download (audio)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         [[DownloadManager shared] downloadVideo:v audioOnly:YES];
     }]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Play Next" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [[PlaybackManager shared] playItemNext:[PlaybackManager streamItemWithID:v[@"id"] title:v[@"title"] audioOnly:NO]];
+    }]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Add to Queue" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [[PlaybackManager shared] enqueueItem:[PlaybackManager streamItemWithID:v[@"id"] title:v[@"title"] audioOnly:NO]];
+    }]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Add to Playlist..." style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        [self pickPlaylist:v];
+    }]];
+    [ac addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:ac animated:YES completion:nil];
+}
+- (void)pickPlaylist:(NSDictionary *)v {
+    UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"Add to Playlist" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    NSArray *pls = [[PlaylistManager shared] playlists];
+    NSInteger i = 0;
+    for (NSDictionary *pl in pls) {
+        NSInteger idx = i++;
+        [ac addAction:[UIAlertAction actionWithTitle:pl[@"name"] style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+            [[PlaylistManager shared] addItem:[PlaybackManager streamItemWithID:v[@"id"] title:v[@"title"] audioOnly:NO] toPlaylist:idx];
+        }]];
+    }
     [ac addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:ac animated:YES completion:nil];
 }

@@ -65,11 +65,29 @@
     } else {
         self.toggle = [UIButton buttonWithType:UIButtonTypeSystem];
         self.toggle.tintColor = [UIColor whiteColor];
-        self.toggle.frame = CGRectMake(0, 0, 200, 44);
+        self.toggle.frame = CGRectMake(0, 0, 60, 44);
         self.toggle.center = self.view.center;
         self.toggle.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
         [self.toggle addTarget:self action:@selector(togglePlay) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:self.toggle];
+        UIButton *prev = [UIButton buttonWithType:UIButtonTypeSystem];
+        [prev setTitle:@"|<" forState:UIControlStateNormal];
+        prev.tintColor = [UIColor whiteColor];
+        prev.frame = CGRectMake(0, 0, 60, 44);
+        prev.center = CGPointMake(self.view.center.x - 90, self.view.center.y);
+        prev.autoresizingMask = self.toggle.autoresizingMask;
+        prev.tag = -1;
+        [prev addTarget:self action:@selector(skip:) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:prev];
+        UIButton *next = [UIButton buttonWithType:UIButtonTypeSystem];
+        [next setTitle:@">|" forState:UIControlStateNormal];
+        next.tintColor = [UIColor whiteColor];
+        next.frame = CGRectMake(0, 0, 60, 44);
+        next.center = CGPointMake(self.view.center.x + 90, self.view.center.y);
+        next.autoresizingMask = self.toggle.autoresizingMask;
+        next.tag = 1;
+        [next addTarget:self action:@selector(skip:) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:next];
     }
 }
 - (void)syncUI {
@@ -78,4 +96,5 @@
     [self.toggle setTitle:[m isPlaying] ? @"Pause" : @"Play" forState:UIControlStateNormal];
 }
 - (void)togglePlay { [[PlaybackManager shared] toggle]; }
+- (void)skip:(UIButton *)b { [[PlaybackManager shared] advance:b.tag]; }
 @end

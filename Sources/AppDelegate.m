@@ -2,6 +2,7 @@
 #import "SearchViewController.h"
 #import "DownloadManager.h"
 #import "SettingsViewController.h"
+#import "PlaylistViewController.h"
 #import "PlayerViewController.h"
 #import "PlaybackManager.h"
 #import "MiniPlayerBar.h"
@@ -15,15 +16,18 @@
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     SearchViewController *s = [[SearchViewController alloc] init];
     UIViewController *d = [[DownloadManager shared] downloadsViewController];
+    PlaylistViewController *q = [[PlaylistViewController alloc] initWithStyle:UITableViewStylePlain];
     SettingsViewController *c = [[SettingsViewController alloc] init];
     UINavigationController *n0 = [[UINavigationController alloc] initWithRootViewController:s];
     UINavigationController *n1 = [[UINavigationController alloc] initWithRootViewController:d];
+    UINavigationController *n3 = [[UINavigationController alloc] initWithRootViewController:q];
     UINavigationController *n2 = [[UINavigationController alloc] initWithRootViewController:c];
     n0.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Search" image:nil tag:0];
     n1.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Downloads" image:nil tag:1];
-    n2.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Settings" image:nil tag:2];
+    n3.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Playlists" image:nil tag:2];
+    n2.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Settings" image:nil tag:3];
     self.tabs = [[UITabBarController alloc] init];
-    self.tabs.viewControllers = @[n0, n1, n2];
+    self.tabs.viewControllers = @[n0, n1, n3, n2];
     self.window.rootViewController = self.tabs;
     [self.window makeKeyAndVisible];
     CGRect f = self.tabs.view.bounds;
