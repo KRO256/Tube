@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+APP=/Applications/Tube.app
+if [ -d "$APP" ]; then
+  chown -R root:wheel "$APP" 2>/dev/null || true
+  chmod 0755 "$APP"
+  chmod 0755 "$APP/Tube"
+fi
+if [ -x /usr/bin/uicache ]; then /usr/bin/uicache; fi
+exit 0

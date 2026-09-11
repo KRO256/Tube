@@ -23,6 +23,11 @@ jobs:
           export THEOS=~/theos
           make package FINALPACKAGE=1
           ls -la *.deb packages/*.deb 2>/dev/null || true
+      - name: verify
+        run: |
+          DEB=$(ls packages/*.deb *.deb 2>/dev/null | head -1)
+          dpkg-deb -c "$DEB"
+          python3 .github/verify_deb.py "$DEB"
       - uses: actions/upload-artifact@v4
         with:
           name: tube-deb
