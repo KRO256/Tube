@@ -5,10 +5,11 @@ print("file:", fout.strip())
 assert "gzip" in fout or "compression gz" in fout, "deb must be gzip compressed"
 listing = subprocess.run(["dpkg-deb", "-c", deb], capture_output=True, text=True).stdout
 print(listing)
-paths = [l.split()[-1] for l in listing.strip().split("\n")]
-for need in ["./Applications/Tube.app/Tube", "./Applications/Tube.app/Info.plist",
-             "./Applications/Tube.app/Icon.png", "./Applications/Tube.app/Icon@2x.png",
-             "./Applications/Tube.app/Icon-60@2x.png"]:
+def norm(p): return p[2:] if p.startswith("./") else p
+paths = [norm(l.split()[-1]) for l in listing.strip().split("\n")]
+for need in ["Applications/Tube.app/Tube", "Applications/Tube.app/Info.plist",
+             "Applications/Tube.app/Icon.png", "Applications/Tube.app/Icon@2x.png",
+             "Applications/Tube.app/Icon-60@2x.png"]:
     assert need in paths, "missing " + need
 os.system("rm -rf /tmp/dctrl && mkdir -p /tmp/dctrl")
 assert os.system("dpkg-deb -e '%s' /tmp/dctrl" % deb) == 0
