@@ -39,4 +39,7 @@
 - (void)remoteControlReceivedWithEvent:(UIEvent *)e {
     [[PlaybackManager shared] handleRemoteEvent:e];
 }
+- (void)application:(UIApplication *)app handleEventsForBackgroundURLSession:(NSString *)ident completionHandler:(void (^)(void))h {
+    [DownloadManager shared].backgroundCompletion = h;
+}
 @end

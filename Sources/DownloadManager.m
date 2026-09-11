@@ -103,14 +103,36 @@ NSString *TubeDownloadProgress = @"TubeDownloadProgress";
 - (instancetype)init {
     if (self = [super init]) {
         _active = [NSMutableDictionary dictionary];
-        _session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]
-                                                 delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+        NSURLSessionConfiguration *c = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"com.local.tube.dl"];
+        c.discretionary = NO;
+        _session = [NSURLSession sessionWithConfiguration:c delegate:self delegateQueue:[NSOperationQueue mainQueue]];
     }
     return self;
 }
 - (UIViewController *)downloadsViewController { return [[DownloadsVC alloc] initWithStyle:UITableViewStylePlain]; }
 - (NSArray *)activeDownloads { return [[self.active allValues] sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"title" ascending:YES]]]; }
 - (void)changed { [[NSNotificationCenter defaultCenter] postNotificationName:TubeDownloadsChanged object:nil]; }
+- (void)alert:(NSString *)t msg:(NSString *)m {
+    if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) return;
+    UIAlertView *a = [[UIAlertView alloc] initWithTitle:t message:m delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+    [a show];
+}
+- (NSMutableDictionary *)meta {
+    NSDictionary *d = [[NSUserDefaults standardUserDefaults] objectForKey:@"TubeDLMeta"];
+    return d ? [d mutableCopy] : [NSMutableDictionary dictionary];
+}
+- (void)saveMeta:(NSString *)vid title:(NSString *)title dest:(NSString *)dest {
+    NSMutableDictionary *m = [self meta];
+    m[vid] = @{@"title": title, @"dest": dest};
+    [[NSUserDefaults standardUserDefaults] setObject:m forKey:@"TubeDLMeta"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+- (void)dropMeta:(NSString *)vid {
+    NSMutableDictionary *m = [self meta];
+    [m removeObjectForKey:vid];
+    [[NSUserDefaults standardUserDefaults] setObject:m forKey:@"TubeDLMeta"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
 - (void)downloadVideo:(NSDictionary *)video audioOnly:(BOOL)audio {
     NSString *vid = video[@"id"];
     NSString *raw = video[@"title"] ? video[@"title"] : vid;
@@ -129,17 +151,18 @@ NSString *TubeDownloadProgress = @"TubeDownloadProgress";
         NSURLSessionDownloadTask *task = [self.session downloadTaskWithURL:[NSURL URLWithString:u]];
         task.taskDescription = vid;
         self.active[vid] = [@{@"vid": vid, @"title": title, @"dest": dest, @"task": task, @"progress": @0} mutableCopy];
+        [self saveMeta:vid title:title dest:dest];
         [task resume];
         [self changed];
-        UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Download started" message:title delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-        [a show];
+        [self alert:@"Download started" msg:title];
     }];
 }
 - (void)cancelDownload:(NSString *)vid {
     NSMutableDictionary *d = self.active[vid];
     if (!d) return;
-    [d[@"task"] cancel];
+    [[d[@"task"] cancel];
     [self.active removeObjectForKey:vid];
+    [self dropMeta:vid];
     [self changed];
 }
 - (void)URLSession:(NSURLSession *)s downloadTask:(NSURLSessionDownloadTask *)t didWriteData:(int64_t)b totalBytesWritten:(int64_t)w totalBytesExpectedToWrite:(int64_t)x {
@@ -151,16 +174,19 @@ NSString *TubeDownloadProgress = @"TubeDownloadProgress";
 }
 - (void)URLSession:(NSURLSession *)s downloadTask:(NSURLSessionDownloadTask *)t didFinishDownloadingToURL:(NSURL *)loc {
     NSMutableDictionary *d = self.active[t.taskDescription];
-    if (!d) return;
+    NSString *dest = d ? d[@"dest"] : [self meta][t.taskDescription][@"dest"];
+    NSString *title = d ? d[@"title"] : [self meta][t.taskDescription][@"title"];
     [self.active removeObjectForKey:t.taskDescription];
+    [self dropMeta:t.taskDescription];
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *msg = nil;
-    if (!loc || ![fm fileExistsAtPath:loc.path]) msg = @"temp file missing";
+    if (!dest) msg = @"unknown destination";
+    else if (!loc || ![fm fileExistsAtPath:loc.path]) msg = @"temp file missing";
     else {
-        [fm removeItemAtPath:d[@"dest"] error:nil];
+        [fm removeItemAtPath:dest error:nil];
         NSError *mv = nil;
-        if (![fm moveItemAtPath:loc.path toPath:d[@"dest"] error:&mv]) {
-            if ([fm copyItemAtPath:loc.path toPath:d[@"dest"] error:&mv]) {
+        if (![fm moveItemAtPath:loc.path toPath:dest error:&mv]) {
+            if ([fm copyItemAtPath:loc.path toPath:dest error:&mv]) {
                 [fm removeItemAtPath:loc.path error:nil];
                 mv = nil;
             }
@@ -168,16 +194,23 @@ NSString *TubeDownloadProgress = @"TubeDownloadProgress";
         msg = mv ? mv.localizedDescription : nil;
     }
     [self changed];
-    UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Download" message:msg ? msg : [@"Saved: " stringByAppendingString:d[@"dest"]] delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-    [a show];
+    NSString *done = msg ? msg : [@"Saved: " stringByAppendingString:(title ? title : dest)];
+    [self alert:@"Download" msg:done];
 }
 - (void)URLSession:(NSURLSession *)s task:(NSURLSessionTask *)t didCompleteWithError:(NSError *)e {
     if (!e) return;
     NSMutableDictionary *d = self.active[t.taskDescription];
     if (!d) return;
     [self.active removeObjectForKey:t.taskDescription];
+    [self dropMeta:t.taskDescription];
     [self changed];
-    UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"Download" message:e.localizedDescription delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-    [a show];
+    [self alert:@"Download" msg:e.localizedDescription];
+}
+- (void)URLSessionDidFinishEventsForBackgroundURLSession:(NSURLSession *)s {
+    if (self.backgroundCompletion) {
+        void (^h)(void) = self.backgroundCompletion;
+        self.backgroundCompletion = nil;
+        h();
+    }
 }
 @end
