@@ -9,6 +9,8 @@
 @property (nonatomic) BOOL shared;
 @property (nonatomic, strong) AVPlayerViewController *vc;
 @property (nonatomic, strong) UIButton *toggle;
+@property (nonatomic, strong) UIButton *repBtn;
+@property (nonatomic, strong) UIButton *shufBtn;
 @property (nonatomic, strong) UIActivityIndicatorView *spin;
 @end
 @implementation PlayerViewController
@@ -54,6 +56,11 @@
     PlaybackManager *m = [PlaybackManager shared];
     if (self.vc) { [self.vc willMoveToParentViewController:nil]; [self.vc.view removeFromSuperview]; [self.vc removeFromParentViewController]; self.vc = nil; }
     if (self.toggle) { [self.toggle removeFromSuperview]; self.toggle = nil; }
+    if (self.repBtn) { [self.repBtn removeFromSuperview]; self.repBtn = nil; }
+    if (self.shufBtn) { [self.shufBtn removeFromSuperview]; self.shufBtn = nil; }
+    for (UIView *v in [self.view.subviews copy]) {
+        if ([v isKindOfClass:[UIButton class]]) [v removeFromSuperview];
+    }
     if (m.isVideo && m.player.currentItem) {
         self.vc = [[AVPlayerViewController alloc] init];
         self.vc.player = m.player;
@@ -88,13 +95,32 @@
         next.tag = 1;
         [next addTarget:self action:@selector(skip:) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:next];
+        self.repBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.repBtn.tintColor = [UIColor whiteColor];
+        self.repBtn.frame = CGRectMake(0, 0, 100, 36);
+        self.repBtn.center = CGPointMake(self.view.center.x - 70, self.view.center.y + 60);
+        self.repBtn.autoresizingMask = self.toggle.autoresizingMask;
+        [self.repBtn addTarget:self action:@selector(cycleRep) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:self.repBtn];
+        self.shufBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.shufBtn.tintColor = [UIColor whiteColor];
+        self.shufBtn.frame = CGRectMake(0, 0, 100, 36);
+        self.shufBtn.center = CGPointMake(self.view.center.x + 70, self.view.center.y + 60);
+        self.shufBtn.autoresizingMask = self.toggle.autoresizingMask;
+        [self.shufBtn addTarget:self action:@selector(toggleShuf) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:self.shufBtn];
     }
 }
 - (void)syncUI {
     PlaybackManager *m = [PlaybackManager shared];
     self.title = m.currentTitle;
     [self.toggle setTitle:[m isPlaying] ? @"Pause" : @"Play" forState:UIControlStateNormal];
+    NSArray *rep = @[@"R:Off", @"R:All", @"R:1"];
+    [self.repBtn setTitle:rep[m.repeatMode] forState:UIControlStateNormal];
+    [self.shufBtn setTitle:m.shuffle ? @"S:On" : @"S:Off" forState:UIControlStateNormal];
 }
 - (void)togglePlay { [[PlaybackManager shared] toggle]; }
+- (void)cycleRep { [[PlaybackManager shared] cycleRepeat]; }
+- (void)toggleShuf { [[PlaybackManager shared] toggleShuffle]; }
 - (void)skip:(UIButton *)b { [[PlaybackManager shared] advance:b.tag]; }
 @end

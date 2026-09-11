@@ -9,6 +9,8 @@
 @property (nonatomic, strong) UITableView *table;
 @property (nonatomic, strong) UIActivityIndicatorView *spin;
 @property (nonatomic, strong) NSArray *results;
+@property (nonatomic, strong) NSArray *suggests;
+@property (nonatomic, strong) NSURLSessionDataTask *suggestTask;
 @end
 @implementation SearchViewController
 - (void)viewDidLoad {
@@ -32,6 +34,8 @@
 - (void)searchBarSearchButtonClicked:(UISearchBar *)bar {
     [bar resignFirstResponder];
     if (!bar.text.length) return;
+    self.suggests = @[];
+    [self.suggestTask cancel];
     [self.spin startAnimating];
     [[YTDLPManager shared] search:bar.text max:15 completion:^(NSArray *r, NSString *e) {
         [self.spin stopAnimating];
@@ -44,8 +48,43 @@
     }];
 }
 - (void)searchBarCancelButtonClicked:(UISearchBar *)bar { [bar resignFirstResponder]; }
-- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return self.results.count; }
+- (void)searchBar:(UISearchBar *)bar textDidChange:(NSString *)text {
+    [self.suggestTask cancel];
+    if (!text.length) { self.suggests = @[]; [self.table reloadData]; return; }
+    NSString *q = [text stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSURL *u = [NSURL URLWithString:[@"https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=" stringByAppendingString:q]];
+    __weak SearchViewController *w = self;
+    self.suggestTask = [[NSURLSession sharedSession] dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
+        if (e || !d) return;
+        NSArray *j = [NSJSONSerialization JSONObjectWithData:d options:0 error:nil];
+        NSMutableArray *out = [NSMutableArray array];
+        if ([j isKindOfClass:[NSArray class]] && j.count > 1 && [j[1] isKindOfClass:[NSArray class]]) {
+            for (id s in j[1]) {
+                NSString *t = [s isKindOfClass:[NSString class]] ? s : ([s isKindOfClass:[NSArray class]] && [s count] ? s[0] : nil);
+                if ([t isKindOfClass:[NSString class]] && t.length) [out addObject:t];
+                if (out.count >= 8) break;
+            }
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            w.suggests = out;
+            if (!w.results.count) [w.table reloadData];
+        });
+    }];
+    [self.suggestTask resume];
+}
+- (BOOL)showingResults { return self.results.count > 0; }
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s {
+    return [self showingResults] ? self.results.count : self.suggests.count;
+}
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)p {
+    if (![self showingResults]) {
+        UITableViewCell *c = [t dequeueReusableCellWithIdentifier:@"s"];
+        if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"s"];
+        c.textLabel.text = self.suggests[p.row];
+        c.textLabel.font = [UIFont systemFontOfSize:14];
+        c.textLabel.textColor = [UIColor grayColor];
+        return c;
+    }
     static NSString *ID = @"c";
     UITableViewCell *c = [t dequeueReusableCellWithIdentifier:ID];
     if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:ID];
@@ -58,6 +97,11 @@
 }
 - (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)p {
     [t deselectRowAtIndexPath:p animated:YES];
+    if (![self showingResults]) {
+        self.bar.text = self.suggests[p.row];
+        [self searchBarSearchButtonClicked:self.bar];
+        return;
+    }
     NSDictionary *v = self.results[p.row];
     UIAlertController *ac = [UIAlertController alertControllerWithTitle:v[@"title"] message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [ac addAction:[UIAlertAction actionWithTitle:@"Video Play" style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {

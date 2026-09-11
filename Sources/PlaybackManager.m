@@ -8,6 +8,8 @@ NSString *TubePlaybackChanged = @"TubePlaybackChanged";
 @property (nonatomic) BOOL isVideo;
 @property (nonatomic, strong) NSMutableArray *items;
 @property (nonatomic) NSInteger queueIndex;
+@property (nonatomic) NSInteger repeatMode;
+@property (nonatomic) BOOL shuffle;
 @end
 @implementation PlaybackManager
 + (instancetype)shared {
@@ -19,6 +21,8 @@ NSString *TubePlaybackChanged = @"TubePlaybackChanged";
         _items = [NSMutableArray array];
         _queueIndex = -1;
         _player = [[AVPlayer alloc] init];
+        _repeatMode = [[NSUserDefaults standardUserDefaults] integerForKey:@"TubeRepeat"];
+        _shuffle = [[NSUserDefaults standardUserDefaults] boolForKey:@"TubeShuffle"];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ended:) name:AVPlayerItemDidPlayToEndTimeNotification object:nil];
     }
     return self;
@@ -82,7 +86,34 @@ NSString *TubePlaybackChanged = @"TubePlaybackChanged";
     }
     [self changed];
 }
-- (void)advance:(NSInteger)delta { [self playQueueAt:self.queueIndex + delta]; }
+- (void)advance:(NSInteger)delta { [self step:delta]; }
+- (void)step:(NSInteger)delta {
+    if (self.items.count == 0 || self.queueIndex < 0) return;
+    if (delta > 0 && self.shuffle && self.items.count > 1) {
+        NSInteger n = self.queueIndex;
+        while (n == self.queueIndex) n = arc4random_uniform((uint32_t)self.items.count);
+        [self playQueueAt:n];
+        return;
+    }
+    NSInteger nx = self.queueIndex + delta;
+    if (nx >= self.items.count) {
+        if (delta > 0 && self.repeatMode == 1) nx = 0;
+        else return;
+    }
+    [self playQueueAt:nx];
+}
+- (void)cycleRepeat {
+    self.repeatMode = (self.repeatMode + 1) % 3;
+    [[NSUserDefaults standardUserDefaults] setInteger:self.repeatMode forKey:@"TubeRepeat"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self changed];
+}
+- (void)toggleShuffle {
+    self.shuffle = !self.shuffle;
+    [[NSUserDefaults standardUserDefaults] setBool:self.shuffle forKey:@"TubeShuffle"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self changed];
+}
 - (void)startCurrent {
     if (self.queueIndex < 0 || self.queueIndex >= self.items.count) return;
     NSDictionary *it = self.items[self.queueIndex];
@@ -114,7 +145,14 @@ NSString *TubePlaybackChanged = @"TubePlaybackChanged";
     [self pushInfo:YES];
 }
 - (void)ended:(NSNotification *)n {
-    if (n.object == self.player.currentItem) [self advance:1];
+    if (n.object != self.player.currentItem) return;
+    if (self.repeatMode == 2) {
+        [self.player seekToTime:kCMTimeZero];
+        [self.player play];
+        [self pushInfo:YES];
+        return;
+    }
+    [self advance:1];
 }
 - (void)toggle {
     if ([self isPlaying]) [self.player pause];
