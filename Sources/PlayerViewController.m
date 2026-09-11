@@ -2,6 +2,7 @@
 #import "YTDLPManager.h"
 #import <AVKit/AVKit.h>
 #import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
 @interface PlayerViewController ()
 @property (nonatomic, strong) NSDictionary *video;
 @property (nonatomic) BOOL audioOnly;
@@ -22,6 +23,8 @@
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+    [self becomeFirstResponder];
     self.view.backgroundColor = [UIColor blackColor];
     self.title = self.video[@"title"] ?: [self.localPath lastPathComponent];
     self.spin = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
@@ -37,6 +40,27 @@
         }
         [self playURL:[NSURL URLWithString:u]];
     }];
+}
+- (BOOL)canBecomeFirstResponder { return YES; }
+- (void)nowPlaying:(BOOL)playing {
+    NSString *t = self.video ? self.video[@"title"] : [self.localPath lastPathComponent];
+    if (!t) t = @"Tube";
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:@{
+        MPMediaItemPropertyTitle: t,
+        MPNowPlayingInfoPropertyPlaybackRate: playing ? @1 : @0
+    }];
+}
+- (void)remoteControlReceivedWithEvent:(UIEvent *)e {
+    if (e.type != UIEventTypeRemoteControl) return;
+    switch (e.subtype) {
+        case UIEventSubtypeRemoteControlPlay:
+            [self.player play]; [self.toggle setTitle:@"Pause" forState:UIControlStateNormal]; [self nowPlaying:YES]; break;
+        case UIEventSubtypeRemoteControlPause:
+            [self.player pause]; [self.toggle setTitle:@"Play" forState:UIControlStateNormal]; [self nowPlaying:NO]; break;
+        case UIEventSubtypeRemoteControlTogglePlayPause:
+            [self togglePlay]; break;
+        default: break;
+    }
 }
 - (void)playURL:(NSURL *)url {
     self.player = [AVPlayer playerWithURL:url];
@@ -61,10 +85,16 @@
         [self.vc didMoveToParentViewController:self];
         [self.player play];
     }
+    [self nowPlaying:YES];
 }
 - (void)togglePlay {
-    if (self.player.rate == 0) { [self.player play]; [self.toggle setTitle:@"Pause" forState:UIControlStateNormal]; }
-    else { [self.player pause]; [self.toggle setTitle:@"Play" forState:UIControlStateNormal]; }
+    if (self.player.rate == 0) { [self.player play]; [self.toggle setTitle:@"Pause" forState:UIControlStateNormal]; [self nowPlaying:YES]; }
+    else { [self.player pause]; [self.toggle setTitle:@"Play" forState:UIControlStateNormal]; [self nowPlaying:NO]; }
 }
-- (void)viewDidDisappear:(BOOL)a { [super viewDidDisappear:a]; [self.player pause]; }
+- (void)viewDidDisappear:(BOOL)a {
+    [super viewDidDisappear:a];
+    [self.player pause];
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo:nil];
+    [[UIApplication sharedApplication] endReceivingRemoteControlEvents];
+}
 @end
