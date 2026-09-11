@@ -57,6 +57,15 @@
     self.suggestTask = [[NSURLSession sharedSession] dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
         if (e || !d) return;
         NSArray *j = [NSJSONSerialization JSONObjectWithData:d options:0 error:nil];
+        if (!j) {
+            NSString *raw = [[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding];
+            NSRange a = [raw rangeOfString:@"("];
+            NSRange b = [raw rangeOfString:@")" options:NSBackwardsSearch];
+            if (a.location != NSNotFound && b.location != NSNotFound && b.location > a.location) {
+                NSString *inner = [raw substringWithRange:NSMakeRange(a.location + 1, b.location - a.location - 1)];
+                j = [NSJSONSerialization JSONObjectWithData:[inner dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+            }
+        }
         NSMutableArray *out = [NSMutableArray array];
         if ([j isKindOfClass:[NSArray class]] && j.count > 1 && [j[1] isKindOfClass:[NSArray class]]) {
             for (id s in j[1]) {
